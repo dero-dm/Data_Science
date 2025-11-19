@@ -1,1 +1,85 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+
+
+df.info()
+df.describe()
+
+# Check missing values
+df.isnull().sum()
+
+
+df_clean = pd.get_dummies(df, drop_first=True)
+df_clean.head()
+
+
+TARGET_COLUMN = "dropout_Yes"   # change this after checking df.head()
+
+X = df_clean.drop(TARGET_COLUMN, axis=1)
+y = df_clean[TARGET_COLUMN]
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+
+model = RandomForestClassifier(n_estimators=300, random_state=42)
+model.fit(X_train, y_train)
+
+
+
+
+y_pred = model.predict(X_test)
+
+
+
+importances = model.feature_importances_
+indices = np.argsort(importances)[::-1]
+
+plt.figure(figsize=(10,6))
+plt.title("Feature Importance")
+plt.bar(range(len(indices)), importances[indices])
+plt.xticks(range(len(indices)), X.columns[indices], rotation=90)
+plt.show()
+
+
+
+
+import pandas as pd
+import pickle
+
+# Load the model you trained earlier
+with open("student_dropout_model.pkl", "rb") as f:
+    model = pickle.load(f)
+
+# Load the original training data (needed for encoding)
+df = pd.read_csv("iti_student_dropout_dataset.csv")
+
+# Load student input file
+new_student = pd.read_csv("student_test.csv")
+
+# Combine with original data for consistent encoding
+df_combined = pd.concat([df.drop('dropout', axis=1), new_student], ignore_index=True)
+
+# One-hot encode
+df_encoded = pd.get_dummies(df_combined, drop_first=True)
+
+# Select ONLY the last row (the student)
+student_encoded = df_encoded.tail(1)
+
+# Predict
+prediction = model.predict(student_encoded)[0]
+probability = model.predict_proba(student_encoded)[0][1]  # dropout probability
+
+# Display results
+print("Prediction:", "Dropped Out" if prediction == 1 else "Not Dropped Out")
+print(f"Dropout Risk Probability: {probability*100:.2f}%")
